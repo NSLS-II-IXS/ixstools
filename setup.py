@@ -4,7 +4,7 @@ from setuptools import setup
 
 version = '1.0.0'
 
-required = open('requirements.txt').read().split('\n')
+# required = open('requirements.txt').read().split('\n')
 
 setup(
     name='ixstools',
@@ -18,7 +18,7 @@ setup(
     'console_scripts': [
       'align = ixstools.align:main'
     ]},
-    install_requires=required,
+    # install_requires=required,
     long_description='See ' + 'https://github.com/NSLS-II-IXS/ixstools',
     license='BSD'
 )
