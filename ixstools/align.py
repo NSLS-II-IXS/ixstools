@@ -170,9 +170,16 @@ def run_programmatically(specfile, x, y, scans, monitors,
         summed_df.to_csv(fpath, output_sep)
 
     fig, ax = plt.subplots()
+    if logy:
+        plotfunc = 'semilogy'
+    else:
+        plotfunc = 'plot'
     for sid, df in zip(scans, summed):
-        ax.plot(df, label=str(sid))
+        getattr(ax, plotfunc)(df, label=str(sid), marker='o')
     ax.legend(loc=0)
+    ax.set_title("Aligned and summed by scan")
+    ax.set_xlabel(x)
+    ax.set_ylabel("Normalized counts per second")
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
             summed, scans)
