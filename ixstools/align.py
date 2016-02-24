@@ -95,7 +95,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     # output the raw data and make some matplotlib plots
     for x_vals, y_sid, sid in zip(x_data, y_data, scans):
         fpath = os.path.join(output_dir, '%s-raw' % sid)
-        df = y_sid.copy()
+        df = y_sid.copy().set_index(x_vals)
         df.to_csv(fpath, output_sep)
         fig, ax = plt.subplots()
         df.plot(logy=logy, ax=ax)
@@ -139,33 +139,33 @@ def run_programmatically(specfile, x, y, scans, monitors,
         pd.DataFrame(df_dict).to_csv(fpath, output_sep)
 
     # compute the average difference between data points
-    diffs = [np.average([np.average(np.diff(x)) for x, y in z]) for z in zeroed]
-    minvals = [np.min([np.min(x) for x, y in z]) for z in zeroed]
-    maxvals = [np.max([np.max(x) for x, y in z]) for z in zeroed]
+    diff = np.average([np.average([np.average(np.diff(x)) for x, y in z]) for z in zeroed])
+    minval = np.min([np.min([np.min(x) for x, y in z]) for z in zeroed])
+    maxval = np.max([np.max([np.max(x) for x, y in z]) for z in zeroed])
     # compute the new axes
-    new_axis = [np.arange(minval, maxval, diff / densify_interpolated_axis)
-                for minval, maxval, diff in zip(minvals, maxvals, diffs)]
+    new_axis = np.arange(minval, maxval, diff / densify_interpolated_axis)
     # set up the interpolators
     interpolators = [[interp1d(x, y, kind=interpolation_mode,
                                bounds_error=False,
                                fill_value=np.nan)
                       for x, y in z] for z in zeroed]
-    # Create a dict of the interpolated values so it can easily be passed to pandas
+
+    # Create the interpolated values categorized by scan
     interpolated = [
-        pd.DataFrame({col_name: interp(axis) for col_name, interp in
-                      zip(y_keys, interpolator)}, index=axis)
-                    for axis, interpolator in
-                    zip( new_axis, interpolators)]
+        pd.DataFrame({col_name: interp(new_axis) for col_name, interp in
+                      zip(y_keys, interpolator)},
+                     index=new_axis) for interpolator in interpolators]
+
+
     # output the interpolated data
     for interp_df, sid in zip(interpolated, scans):
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'interpolated']))
         interp_df.to_csv(fpath, output_sep)
 
-    summed = [pd.DataFrame({sid: interp_df.dropna().sum(axis=1)})
-              for sid, interp_df in zip(scans, interpolated)]
+    summed_by_scan = [pd.DataFrame({sid: interp_df.dropna().sum(axis=1)})
+                      for sid, interp_df in zip(scans, interpolated)]
     # output the summed data
-    # output the interpolated data
-    for summed_df, sid in zip(summed, scans):
+    for summed_df, sid in zip(summed_by_scan, scans):
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
         summed_df.to_csv(fpath, output_sep)
 
@@ -174,7 +174,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
         plotfunc = 'semilogy'
     else:
         plotfunc = 'plot'
-    for sid, df in zip(scans, summed):
+    for sid, df in zip(scans, summed_by_scan):
         getattr(ax, plotfunc)(df, label=str(sid), marker='o')
     ax.legend(loc=0)
     ax.set_title("Aligned and summed by scan")
@@ -184,7 +184,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     plt.savefig(os.path.join(output_dir, fname))
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
-            summed, scans)
+            summed_by_scan, scans)
 
 
 def main():
