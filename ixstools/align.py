@@ -172,31 +172,60 @@ def run_programmatically(specfile, x, y, scans, monitors,
     summed_by_scan = pd.DataFrame({
         sid: interp_df.dropna().sum(axis=1)
         for sid, interp_df in zip(scans, interpolated)}, index=new_axis)
-
-    # output the summed data
-    fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
-    summed_by_scan.to_csv(fpath, output_sep)
-
     # sum by detector
     summed_by_detector = pd.DataFrame({
         det_name: np.sum([df[det_name].values for df in interpolated], axis=0)
         for det_name in list(y_data[0].columns)}, index=new_axis)
+    # fit the summed by scan curves
+    # pdb.set_trace()
+    summed_by_scan_fit = {}
+    fits = {}
+    for sid in summed_by_scan:
+        series = summed_by_scan[sid].dropna()
+        f = fit(series.index.values, series.values)
+        fits[sid] = f
+        summed_by_scan_fit[sid] = pd.DataFrame({sid: f.best_fit}, index=series.index.values)
+        # pdb.set_trace()
+    # summed_by_scan_fit = pd.DataFrame(fit_dict, index=series.index.values)
+    # summed_by_scan_fit = [fit(np.asarray(summed_by_scan.index),
+    #                           np.asarray(summed_by_scan[sid].values))
+    #                       for sid in summed_by_scan]
+    # summed_by_detector_fit = [fit(np.asarray(summed_by_detector.index),
+    #                               summed_by_detector[sid].values)
+    #                           for sid in summed_by_detector]
+    # output the summed data
+    # pdb.set_trace()
+    fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
+    summed_by_scan.to_csv(fpath + '-by-scan', output_sep)
+    summed_by_detector.to_csv(fpath + '-by-detector', output_sep)
+
     # write metadata to file
     fname = '-'.join([str(sid) for sid in scans]) + 'metadata'
     with open(os.path.join(output_dir,  fname), 'w') as f:
         f.write(pformat(metadata))
-    fig, axes = plt.subplots(ncols=2)
+    fig, axes = plt.subplots(ncols=1)
+    try:
+        len(axes)
+    except TypeError:
+        axes = [axes]
     if logy:
         plotfunc = 'semilogy'
     else:
         plotfunc = 'plot'
-    for ax, df, title in zip(axes, [summed_by_scan, summed_by_detector],
-                             ["Aligned and summed by scan",
-                              "Aligned and summed by detector"]):
-        for col_name in df:
+    for ax, df, df_fit, title, in zip(
+            axes,
+            [summed_by_scan, summed_by_detector],
+            [summed_by_scan_fit],#, summed_by_detector]
+            ["Aligned and summed by scan", "Aligned and summed by detector"]):
+        for col_name, c in zip(df, ['b', 'g', 'k', 'y', 'o', 'r']):
             getattr(ax, plotfunc)(df[col_name], label=str(col_name),
-                                  marker='o')
-        ax.legend(loc=0)
+                                  marker='o', markerfacecolor=c, linestyle='None')
+            getattr(ax, plotfunc)(df_fit[col_name], label=str(col_name)+'fit',
+                                  marker='', linestyle='-', linewidth=1,
+                                  color=c)
+            fwhm = fits[col_name].params['fwhm']
+            print('FWHM for %s: %.4g +/- %.2g' % (col_name, fwhm.value, fwhm.stderr))
+        ax.legend(loc=1)
         ax.set_title(title)
         ax.set_xlabel(r'$\Delta$E')
         ax.set_ylabel("Normalized counts per second")
@@ -205,7 +234,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     plt.savefig(os.path.join(output_dir, fname))
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
-            summed_by_scan, scans, metadata)
+            summed_by_scan, scans, metadata, summed_by_scan_fit, fits)
 
 
 def main():
@@ -242,3 +271,6 @@ def main():
     print('Arguments from command line init')
     print(args)
     run(args.specfile, args.config, args.scans, args.x, args.y)
+
+if __name__ == "__main__":
+    run('../data/20160219', '../data/align.conf')

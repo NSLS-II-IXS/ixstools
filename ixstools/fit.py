@@ -2,14 +2,13 @@ import os
 import numpy as np
 from lmfit.models import LorentzianModel, LinearModel
 
-
 def fit(x, y, bounds=None):
     """Fit a lorentzian + linear background to `field` in `scan`
 
     Parameters
     ----------
-    scan : Specscan object
-    field : The field to fit
+    x : array
+    y : array
     bounds : The +/- range to fit the data to
 
     Returns
