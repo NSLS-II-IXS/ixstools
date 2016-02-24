@@ -147,38 +147,3 @@ def main():
     print('Arguments from command line init')
     print(args)
     run(args.specfile, args.config, args.scans, args.x, args.y)
-
-
-if __name__ == "__main__":
-    # the name of the file that you wish to open
-    specfilename = '/home/edill/dev/python/ixstools/data/20160219'
-    # the name of the x column
-    x = 'HRM_En'
-    # the name of the detector (y column)
-    y = 'TD*'
-    # the name of the monitor column
-    monitor = 'SRcur'
-    # the scans that you wish to process
-    scans = [18, 20, 22, 24]
-    interpolation_mode = 'linear'
-    # The number to divide the step size by
-    # use a value < 1 for more interpolated points
-    # use a value > 1 for less interpolated points
-    densify_interpolated_axis_factor = 1
-    # the name of the output file that you are going to write
-    output_path = '/tmp/foo'
-
-    print('scans = {}'.format(scans))
-    print('writing to {}'.format(output_path))
-
-
-    f = Specfile(specfilename)
-    data = {scan_id: f[scan_id].scan_data[[x]+y].copy() for scan_id in scans}
-
-    print("Scan keys in data = %s" % data.keys())
-    #
-    # normalized = [(x, y / f[scan_id].scan_data[monitor].values)
-    #               for scan_id, (x, y) in zip(scans, raw)]
-    # fits = [fit(xdata, ydata) for (xdata, ydata) in normalized]
-    #
-    # data = fit_and_align(params)
