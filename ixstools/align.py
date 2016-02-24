@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
 import pdb
+import tempfile
 
 def run(specfile, configfile, scans=None, x=None, y=None):
     with open(os.path.abspath(configfile), 'r') as f:
@@ -28,7 +29,11 @@ def run(specfile, configfile, scans=None, x=None, y=None):
 
 def run_programmatically(specfile, x, y, scans, monitor,
                          interpolation_mode='linear',
-                         densify_interpolated_axis=1):
+                         densify_interpolated_axis=1,
+                         output_dir='align_output',
+                         output_sep=' '):
+    # make the output directory
+    os.makedirs(output_dir, exist_ok=True)
     sf = Specfile(specfile)
     # get the dataframes that we care about
     # make sure all the scans have the columns that we care about
@@ -71,17 +76,55 @@ def run_programmatically(specfile, x, y, scans, monitor,
 
     # looks like we made it through the gauntlet!
     x_data = [sf[sid].scan_data[x] for sid in scans]
-    norm_data = [sf[sid].scan_data[monitor] for sid in scans]
+    monitor_data = [sf[sid].scan_data[monitor] for sid in scans]
     y_data = [sf[sid].scan_data[y_keys] for sid in scans]
+    # output the raw data
+    for x_vals, monitor_sid, y_sid, sid in zip(x_data, monitor_data, y_data, scans):
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'raw']))
+        df = y_sid.copy()
+        df[monitor] = pd.Series(monitor_sid, index=x_vals)
+        df.to_csv(fpath, output_sep)
+
     # normalize by the monitor
-    normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, norm_data)]
+    normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, monitor_data)]
+    # output the normalized data
+    for x_vals, norm_vals, sid in zip(x_data, normed, scans):
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'norm']))
+        norm_vals.to_csv(fpath, output_sep)
     # fit all the data
     fits = [[fit(x, cols[col_name]) for col_name in cols]
             for x, cols in zip(x_data, normed)]
+    # output the fit data
+    for x_vals, fit_output, sid in zip(x_data, fits, scans):
+        df_dict = {col_name: f.best_fit.values for col_name, f in zip(y_keys, fit_output)}
+        # pdb.set_trace()
+        df = pd.DataFrame(df_dict, index=x_vals)
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'fit']))
+        df.to_csv(fpath, output_sep)
     # zero everything
     zeroed = [
         [(np.array(f.userkws['x'] - f.params['center'], dtype=float), f.data)
          for f in fit] for fit in fits]
+    # output the zeroed data
+    for zeroed_vals, sid in zip(zeroed, scans):
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'zeroed']))
+        col_names = [['x-%s' % col_name, 'y-%s' % col_name] for col_name in y_keys]
+        df_dict = {col_name: col
+                   for col_name_pair, xy in zip(col_names, zeroed_vals)
+                   for col_name, col in zip(col_name_pair, xy)}
+        pd.DataFrame(df_dict).to_csv(fpath, output_sep)
+        #
+        # # tf = tempfile.NamedTemporaryFile()
+        #
+        # # with open(tf.name, 'w') as f:
+        # zeroed_array = np.asarray(zeroed_vals)
+        # # np.savetxt(tf, X=zeroed_array, delimiter=output_sep)
+        # with open(fpath, 'w') as f:
+        #     f.write(header)
+        #     for line in zeroed_array:
+        #         pdb.set_trace()
+        #         f.write(output_sep.join(line.tolist()))
+
     # compute the average difference between data points
     diffs = [np.average([np.average(np.diff(x)) for x, y in z]) for z in zeroed]
     minvals = [np.min([np.min(x) for x, y in z]) for z in zeroed]
@@ -106,7 +149,7 @@ def run_programmatically(specfile, x, y, scans, monitor,
         plt.plot(df, label=str(sid))
     plt.legend(loc=0)
     plt.show()
-    return (x_data, norm_data, y_data, normed, fits, zeroed, interpolated,
+    return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
             summed, scans)
     # fit it
 
