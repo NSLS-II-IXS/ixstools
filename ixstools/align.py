@@ -113,17 +113,6 @@ def run_programmatically(specfile, x, y, scans, monitor,
                    for col_name_pair, xy in zip(col_names, zeroed_vals)
                    for col_name, col in zip(col_name_pair, xy)}
         pd.DataFrame(df_dict).to_csv(fpath, output_sep)
-        #
-        # # tf = tempfile.NamedTemporaryFile()
-        #
-        # # with open(tf.name, 'w') as f:
-        # zeroed_array = np.asarray(zeroed_vals)
-        # # np.savetxt(tf, X=zeroed_array, delimiter=output_sep)
-        # with open(fpath, 'w') as f:
-        #     f.write(header)
-        #     for line in zeroed_array:
-        #         pdb.set_trace()
-        #         f.write(output_sep.join(line.tolist()))
 
     # compute the average difference between data points
     diffs = [np.average([np.average(np.diff(x)) for x, y in z]) for z in zeroed]
@@ -143,6 +132,11 @@ def run_programmatically(specfile, x, y, scans, monitor,
                       zip(y_keys, interpolator)}, index=axis)
                     for axis, interpolator in
                     zip( new_axis, interpolators)]
+    # output the interpolated data
+    for interp_df, sid in zip(interpolated, scans):
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'interpolated']))
+        interp_df.to_csv(fpath, output_sep)
+
     summed = [interp_df.dropna().sum(axis=1) for interp_df in interpolated]
 
     for sid, df in zip(scans, summed):
