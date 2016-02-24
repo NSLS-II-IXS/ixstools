@@ -162,24 +162,35 @@ def run_programmatically(specfile, x, y, scans, monitors,
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'interpolated']))
         interp_df.to_csv(fpath, output_sep)
 
-    summed_by_scan = [pd.DataFrame({sid: interp_df.dropna().sum(axis=1)})
-                      for sid, interp_df in zip(scans, interpolated)]
-    # output the summed data
-    for summed_df, sid in zip(summed_by_scan, scans):
-        fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
-        summed_df.to_csv(fpath, output_sep)
+    summed_by_scan = pd.DataFrame({
+        sid: interp_df.dropna().sum(axis=1)
+        for sid, interp_df in zip(scans, interpolated)}, index=new_axis)
 
-    fig, ax = plt.subplots()
+    # output the summed data
+    fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
+    summed_by_scan.to_csv(fpath, output_sep)
+
+    # sum by detector
+    summed_by_detector = pd.DataFrame({
+        det_name: np.sum([df[det_name].values for df in interpolated], axis=0)
+        for det_name in list(y_data[0].columns)}, index=new_axis)
+
+    fig, axes = plt.subplots(ncols=2)
     if logy:
         plotfunc = 'semilogy'
     else:
         plotfunc = 'plot'
-    for sid, df in zip(scans, summed_by_scan):
-        getattr(ax, plotfunc)(df, label=str(sid), marker='o')
-    ax.legend(loc=0)
-    ax.set_title("Aligned and summed by scan")
-    ax.set_xlabel(x)
-    ax.set_ylabel("Normalized counts per second")
+    for ax, df, title in zip(axes, [summed_by_scan, summed_by_detector],
+                             ["Aligned and summed by scan",
+                              "Aligned and summed by detector"]):
+        for col_name in df:
+            getattr(ax, plotfunc)(df[col_name], label=str(col_name),
+                                  marker='o')
+        ax.legend(loc=0)
+        ax.set_title(title)
+        ax.set_xlabel(r'$\Delta$E')
+        ax.set_ylabel("Normalized counts per second")
+        ax.axvline(linewidth=3, color='k', linestyle='--')
     fname = '-'.join([str(s) for s in scans] + ['final']) + '.png'
     plt.savefig(os.path.join(output_dir, fname))
     plt.show()
