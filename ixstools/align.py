@@ -137,7 +137,13 @@ def run_programmatically(specfile, x, y, scans, monitor,
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'interpolated']))
         interp_df.to_csv(fpath, output_sep)
 
-    summed = [interp_df.dropna().sum(axis=1) for interp_df in interpolated]
+    summed = [pd.DataFrame({sid: interp_df.dropna().sum(axis=1)})
+              for sid, interp_df in zip(scans, interpolated)]
+    # output the summed data
+    # output the interpolated data
+    for summed_df, sid in zip(summed, scans):
+        fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
+        summed_df.to_csv(fpath, output_sep)
 
     for sid, df in zip(scans, summed):
         plt.plot(df, label=str(sid))
