@@ -9,11 +9,10 @@ import yaml
 import matplotlib.pyplot as plt
 
 
-def run(args):
-    config = os.path.abspath(args.config)
-    with open(config, 'r') as f:
+def run(specfile, configfile):
+    with open(os.path.abspath(configfile), 'r') as f:
         config = yaml.load(f.read())
-    run_programmatically(args.specfile, **config)
+    return run_programmatically(specfile, **config)
 
 def run_programmatically(specfile, x, y, scans, monitor,
                          interpolation_mode='linear'):
@@ -61,9 +60,9 @@ def run_programmatically(specfile, x, y, scans, monitor,
     norm_data = [sf[sid].scan_data[monitor] for sid in scans]
     y_data = [sf[sid].scan_data[y_keys] for sid in scans]
     normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, norm_data)]
-    plt.plot(x_data[0], normed[0], )
-    plt.show()
-    # return x_data, norm_data, y_data, normed
+    fits = [{col_name: fit(x, cols[col_name]) for col_name in cols}
+            for x, cols in zip(x_data, normed)]
+    return x_data, norm_data, y_data, normed, fits
     # fit it
 
     # plot it
@@ -83,7 +82,7 @@ def main():
     )
 
     args = p.parse_args()
-    run(args)
+    run(args.config, args.specfile)
 
 
 if __name__ == "__main__":
