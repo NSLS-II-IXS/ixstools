@@ -13,6 +13,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import pdb
 import tempfile
+from pprint import pformat
 
 def run(specfile, configfile, scans=None, x=None, y=None, logy=None):
     with open(os.path.abspath(configfile), 'r') as f:
@@ -48,6 +49,8 @@ def run_programmatically(specfile, x, y, scans, monitors,
     # make the output directory
     os.makedirs(output_dir, exist_ok=True)
     sf = Specfile(specfile)
+    exposure_time = {sid: np.average(sf[sid].scan_data.Seconds) for sid in scans}
+    metadata = {'exposure time': exposure_time}
     # get the dataframes that we care about
     # make sure all the scans have the columns that we care about
     data = []
@@ -118,6 +121,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     # fit all the data
     fits = [[fit(x, cols[col_name]) for col_name in cols]
             for x, cols in zip(x_data, normed)]
+    metadata['fits'] = {}
     # output the fit data
     for x_vals, fit_output, sid in zip(x_data, fits, scans):
         df_dict = {col_name: f.best_fit.values for col_name, f in zip(y_keys, fit_output)}
@@ -125,6 +129,9 @@ def run_programmatically(specfile, x, y, scans, monitors,
         df = pd.DataFrame(df_dict, index=x_vals)
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'fit']))
         df.to_csv(fpath, output_sep)
+        metadata['fits'][sid] = {
+            col_name: f.fit_report() for col_name, f in zip(y_keys, fit_output)
+        }
     # zero everything
     zeroed = [
         [(np.array(f.userkws['x'] - f.params['center'], dtype=float), f.data)
@@ -174,7 +181,10 @@ def run_programmatically(specfile, x, y, scans, monitors,
     summed_by_detector = pd.DataFrame({
         det_name: np.sum([df[det_name].values for df in interpolated], axis=0)
         for det_name in list(y_data[0].columns)}, index=new_axis)
-
+    # write metadata to file
+    fname = '-'.join([str(sid) for sid in scans]) + 'metadata'
+    with open(os.path.join(output_dir,  fname), 'w') as f:
+        f.write(pformat(metadata))
     fig, axes = plt.subplots(ncols=2)
     if logy:
         plotfunc = 'semilogy'
@@ -195,7 +205,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     plt.savefig(os.path.join(output_dir, fname))
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
-            summed_by_scan, scans)
+            summed_by_scan, scans, metadata)
 
 
 def main():
