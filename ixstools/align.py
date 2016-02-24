@@ -7,6 +7,9 @@ import fnmatch
 import os
 import yaml
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from scipy.interpolate import interp1d
 
 
 def run(specfile, configfile):
@@ -14,8 +17,10 @@ def run(specfile, configfile):
         config = yaml.load(f.read())
     return run_programmatically(specfile, **config)
 
+
 def run_programmatically(specfile, x, y, scans, monitor,
-                         interpolation_mode='linear'):
+                         interpolation_mode='linear',
+                         densify_interpolated_axis=1):
     sf = Specfile(specfile)
     # get the dataframes that we care about
     # make sure all the scans have the columns that we care about
@@ -59,10 +64,35 @@ def run_programmatically(specfile, x, y, scans, monitor,
     x_data = [sf[sid].scan_data[x] for sid in scans]
     norm_data = [sf[sid].scan_data[monitor] for sid in scans]
     y_data = [sf[sid].scan_data[y_keys] for sid in scans]
+    # normalize by the monitor
     normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, norm_data)]
-    fits = [{col_name: fit(x, cols[col_name]) for col_name in cols}
+    # fit all the data
+    fits = [[fit(x, cols[col_name]) for col_name in cols]
             for x, cols in zip(x_data, normed)]
-    return x_data, norm_data, y_data, normed, fits
+    # zero everything
+    zeroed = [
+        [(np.array(f.userkws['x'] - f.params['center'], dtype=float), f.data)
+         for f in fit] for fit in fits]
+    # compute the average difference between data points
+    diffs = [np.average([np.average(np.diff(x)) for x, y in z]) for z in zeroed]
+    minvals = [np.min([np.min(x) for x, y in z]) for z in zeroed]
+    maxvals = [np.max([np.max(x) for x, y in z]) for z in zeroed]
+    # compute the new axes
+    new_axis = [np.arange(minval, maxval, diff / densify_interpolated_axis)
+                for minval, maxval, diff in zip(minvals, maxvals, diffs)]
+    # set up the interpolators
+    interpolators = [[interp1d(x, y, kind=interpolation_mode,
+                               bounds_error=False,
+                               fill_value=np.nan)
+                      for x, y in z] for z in zeroed]
+    # Create a dict of the interpolated values so it can easily be passed to pandas
+    interpolated = [
+        pd.DataFrame({col_name: interp(axis) for col_name, interp in
+                      zip(y_keys, interpolator)}, index=axis)
+                    for axis, interpolator in
+                    zip( new_axis, interpolators)]
+
+    return x_data, norm_data, y_data, normed, fits, zeroed, interpolated, scans
     # fit it
 
     # plot it
