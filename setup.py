@@ -14,6 +14,10 @@ setup(
     author_email='edill@bnl.gov',
     url='https://github.com/NSLS-II-IXS/ixstools',
     packages=['ixstools'],
+    entry_points={
+    'console_scripts': [
+      'align = ixstools.align:main'
+    ]},
     install_requires=required,
     long_description='See ' + 'https://github.com/NSLS-II-IXS/ixstools',
     license='BSD'

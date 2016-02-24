@@ -1,150 +1,98 @@
+from __future__ import division, print_function, absolute_import
+
+from .io import Specfile
+from .fit import fit
+from argparse import ArgumentParser
+import fnmatch
 import os
-import numpy as np
-import pandas as pd
-
+import yaml
 import matplotlib.pyplot as plt
-from lmfit.models import LorentzianModel, LinearModel
-
-class Specfile:
-    def __init__(self, filename):
-        self.filename = os.path.abspath(filename)
-        with open(self.filename, 'r') as f:
-            scan_data = f.read().split('#S')
-        scan_data = [section.split('\n') for section in scan_data]
-        self.header = scan_data.pop(0)
-        self.scans = {}
-        for scan in scan_data:
-            sid = int(scan[0].split()[0])
-            self.scans[sid] = Specscan(self, scan)
-
-    def __getitem__(self, key):
-        return self.scans[key]
-
-    def __len__(self):
-        return len(self.scans)-1
-
-    def __iter__(self):
-        return (self.scans[sid] for sid in sorted(self.scans.keys()))
 
 
-class Specscan:
-    def __init__(self, specfile, raw_scan_data):
-        self.specfile = specfile
-        self.raw_scan_data = raw_scan_data
-        header_row = self.raw_scan_data.pop(0).split()
-        self.scan_id = int(header_row.pop(0))
-        self.scan_command = header_row.pop(0)
-        self.scan_args = header_row
-        for row in self.raw_scan_data:
-            if row.startswith('#L'):
-                self.col_names = row.split()[1:]
-        scan_data = [row.split() for row in self.raw_scan_data
-                     if not row.startswith('#') if row]
-        self.scan_data = pd.DataFrame(
-            data=scan_data, columns=self.col_names, dtype=float)
-    def __repr__(self):
-        return 'Specfile("%s")[%s]' % (self.specfile.filename, self.scan_id)
+def run(args):
+    config = os.path.abspath(args.config)
+    with open(config, 'r') as f:
+        config = yaml.load(f.read())
+    run_programmatically(args.specfile, **config)
 
-    def __str__(self):
-        return str(self.scan_data)
-
-    def __len__(self):
-        return len(self.scan_data)
-
-    def plot(self, column_names=None, x=None):
-        if x is None:
-            x = self.scan_data.columns[0]
-        if column_names is None:
-            column_names = self.scan_data.columns
-        ncols = 2
-        nrows = int(np.ceil(len(column_names)/ncols))
-        try:
-            self.ncols
-            self.nrows
-        except AttributeError:
-            self.ncols = 0
-            self.nrows = 0
-        if self.ncols != ncols or self.nrows != nrows:
-            self.ncols, self.nrows = ncols, nrows
-            self.fig, self.axes = plt.subplots(nrows=nrows,
-                                               ncols=ncols,
-                                               figsize=(5*ncols, 2*nrows))
-        self.arts = {}
-        for data, ax in zip(column_names, self.axes.ravel()):
-            ax.cla()
-            self.arts[data] = ax.plot(self.scan_data[x], self.scan_data[data], label=data)
-            ax.legend(loc=0)
-
-
-def fit(x, y, bounds=None):
-    """Fit a lorentzian + linear background to `field` in `scan`
-
-    Parameters
-    ----------
-    scan : Specscan object
-    field : The field to fit
-    bounds : The +/- range to fit the data to
-
-    Returns
-    -------
-    fit : lmfit.model.ModelFit
-        The results of fitting the data to a linear + lorentzian peak
-
-    Examples
-    --------
-    >>> fit = fit_lorentzian(scan.scan_data)
-    >>> fit.plot()
-    """
-    lorentzian = LorentzianModel()
-    linear = LinearModel()
-    center = x[np.argmax(y)]
-    if bounds is None:
-        lower, upper = 0, len(x)
+def run_programmatically(specfile, x, y, scans, monitor,
+                         interpolation_mode='linear'):
+    sf = Specfile(specfile)
+    # get the dataframes that we care about
+    # make sure all the scans have the columns that we care about
+    data = []
+    y_keys = {}
+    for sid in scans:
+        specscan = sf[sid]
+        if monitor not in specscan.col_names:
+            raise KeyError(
+                '{} is the specified monitor and is not found in scan {}. '
+                'Column names in this scan are {}'.format(
+                    monitor, sid, specscan.col_names))
+        if x not in specscan.col_names:
+            raise KeyError(
+                '{} is the specified x axis and is not found in scan {}. '
+                'Column names in this scan are {}'.format(
+                    x, sid, specscan.col_names))
+        if '*' in y:
+            # need to check to make sure that all the keys are in all the
+            y_keys[sid] = fnmatch.filter(specscan.col_names, y)
+        else:
+            # set(A) < set(B) being True means that A is a subset of B
+            # Make sure that all the keys that are specified in the config
+            # are in the column names of the spec scan
+            if not set(y_keys[sid]) < set(specscan.col_names):
+                raise KeyError(
+                    '{} are found in the config file under the "y:" section '
+                    'but are not found in scan {}'
+                    ''.format(set(y_keys[sid]).difference(specscan.col_names)))
+    if y_keys:
+        keys = list(sorted(y_keys))
+        for k1, k2 in zip(keys, keys[1:]):
+            if y_keys[k1] != y_keys[k2]:
+                print('Scans have different y keys.\nScan {}: {}\nScan{}: {}'
+                      ''.format(k1, y_keys[v1], k2, y_keys[k2]))
+        y_keys = y_keys[keys[0]]
     else:
-        lower = center - bounds
-        upper = center + bounds
-        if lower < 0:
-            lower = 0
-        if upper > len(x):
-            upper = len(x)
-    bounds = slice(lower, upper)
-    y = y[bounds]
-    x = x[bounds]
-    lorentzian_params = lorentzian.guess(y, x=x, center=center)
-    linear_params = linear.guess(y, x=x)
-    lorentzian_params.update(linear_params)
-    model = lorentzian + linear
-    return model.fit(y, x=x, params=lorentzian_params)
+        y_keys = y
+
+    # looks like we made it through the gauntlet!
+    x_data = [sf[sid].scan_data[x] for sid in scans]
+    norm_data = [sf[sid].scan_data[monitor] for sid in scans]
+    y_data = [sf[sid].scan_data[y_keys] for sid in scans]
+    normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, norm_data)]
+    plt.plot(x_data[0], normed[0], )
+    plt.show()
+    # return x_data, norm_data, y_data, normed
+    # fit it
+
+    # plot it
 
 
-def get_data(specfile, x, y, scan_ids):
-    """Get some data out of a specfile
+def main():
+    p = ArgumentParser(
+        description="command line tool for aligning IXS formatted spec files")
+    p.add_argument(
+        'specfile',
+        help='Path to the specfile you wish to parse'
+    )
+    p.add_argument(
+        '-c', '--config',
+        action='store',
+        default='align.conf'
+    )
 
-    Parameters
-    ----------
-    specfile : instance of Specfile
-    x : string
-        name of the 'x' axis
-    y : list
-        name(s) of the 'y' axes
-    scan_ids : int or list
-        scan numbers for which data should be retrieved
-
-    Returns
-    -------
-    dict
-        Dictionary of dataframes, keyed on the scan id
-    """
-    return {scan_id: f[scan_id].scan_data[[x]+y].copy() for scan_id in scan_ids}
+    args = p.parse_args()
+    run(args)
 
 
 if __name__ == "__main__":
     # the name of the file that you wish to open
-    specfilename = '../data/20160219'
+    specfilename = '/home/edill/dev/python/ixstools/data/20160219'
     # the name of the x column
     x = 'HRM_En'
     # the name of the detector (y column)
-    y = ['PD21']
+    y = 'TD*'
     # the name of the monitor column
     monitor = 'SRcur'
     # the scans that you wish to process
@@ -155,13 +103,14 @@ if __name__ == "__main__":
     # use a value > 1 for less interpolated points
     densify_interpolated_axis_factor = 1
     # the name of the output file that you are going to write
-    print('scans = {}'.format(scans))
     output_path = '/tmp/foo'
+
+    print('scans = {}'.format(scans))
     print('writing to {}'.format(output_path))
 
-    f = Specfile(specfilename)
 
-    data = get_data(f, x, y, scans)
+    f = Specfile(specfilename)
+    data = {scan_id: f[scan_id].scan_data[[x]+y].copy() for scan_id in scans}
 
     print("Scan keys in data = %s" % data.keys())
     #
