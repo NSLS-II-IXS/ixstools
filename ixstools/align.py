@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 import fnmatch
 import os
 import yaml
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -13,7 +14,7 @@ from scipy.interpolate import interp1d
 import pdb
 import tempfile
 
-def run(specfile, configfile, scans=None, x=None, y=None):
+def run(specfile, configfile, scans=None, x=None, y=None, logy=None):
     with open(os.path.abspath(configfile), 'r') as f:
         config = yaml.load(f.read())
     if scans:
@@ -22,6 +23,15 @@ def run(specfile, configfile, scans=None, x=None, y=None):
         config['x'] = x
     if y:
         config['y'] = y
+    if logy:
+        config['logy'] = logy
+
+    # make the scans integers
+    config['scans'] = [int(s) for s in config['scans']]
+    if 'logy' in config:
+        # make the logy truthy
+        config['logy'] = bool(config['logy'])
+
     print('Loaded config.')
     print(config)
     return run_programmatically(specfile, **config)
@@ -31,7 +41,10 @@ def run_programmatically(specfile, x, y, scans, monitors,
                          interpolation_mode='linear',
                          densify_interpolated_axis=1,
                          output_dir='align_output',
-                         output_sep=' '):
+                         output_sep=' ',
+                         logy=True):
+    # switch matplotlib to agg backend for making figures and saving to disk
+    matplotlib.use('Agg')
     # make the output directory
     os.makedirs(output_dir, exist_ok=True)
     sf = Specfile(specfile)
@@ -79,11 +92,18 @@ def run_programmatically(specfile, x, y, scans, monitors,
     # looks like we made it through the gauntlet!
     x_data = [sf[sid].scan_data[x] for sid in scans]
     y_data = [sf[sid].scan_data[y_keys] for sid in scans]
-    # output the raw data
+    # output the raw data and make some matplotlib plots
     for x_vals, y_sid, sid in zip(x_data, y_data, scans):
-        fpath = os.path.join(output_dir, '-'.join([str(sid), 'raw']))
+        fpath = os.path.join(output_dir, '%s-raw' % sid)
         df = y_sid.copy()
         df.to_csv(fpath, output_sep)
+        fig, ax = plt.subplots()
+        df.plot(logy=logy, ax=ax)
+        ax.set_title("Scan %s" % sid)
+        ax.set_xlabel(x)
+        ax.set_ylabel("Raw counts")
+        plt.savefig(fpath + '.png')
+        plt.close(fig)
 
     monitor_data = [{monitor: np.average(sf[sid].scan_data[monitor])
                      for monitor in monitors}
@@ -149,9 +169,10 @@ def run_programmatically(specfile, x, y, scans, monitors,
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
         summed_df.to_csv(fpath, output_sep)
 
+    fig, ax = plt.subplots()
     for sid, df in zip(scans, summed):
-        plt.plot(df, label=str(sid))
-    plt.legend(loc=0)
+        ax.plot(df, label=str(sid))
+    ax.legend(loc=0)
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
             summed, scans)
