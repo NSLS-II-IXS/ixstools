@@ -180,6 +180,8 @@ def run_programmatically(specfile, x, y, scans, monitors,
     ax.set_title("Aligned and summed by scan")
     ax.set_xlabel(x)
     ax.set_ylabel("Normalized counts per second")
+    fname = '-'.join([str(s) for s in scans] + ['final']) + '.png'
+    plt.savefig(os.path.join(output_dir, fname))
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
             summed, scans)
