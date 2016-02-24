@@ -10,11 +10,19 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from scipy.interpolate import interp1d
+import pdb
 
-
-def run(specfile, configfile):
+def run(specfile, configfile, scans=None, x=None, y=None):
     with open(os.path.abspath(configfile), 'r') as f:
         config = yaml.load(f.read())
+    if scans:
+        config['scans'] = [int(s) for s in scans]
+    if x:
+        config['x'] = x
+    if y:
+        config['y'] = y
+    print('Loaded config.')
+    print(config)
     return run_programmatically(specfile, **config)
 
 
@@ -45,7 +53,8 @@ def run_programmatically(specfile, x, y, scans, monitor,
             # set(A) < set(B) being True means that A is a subset of B
             # Make sure that all the keys that are specified in the config
             # are in the column names of the spec scan
-            if not set(y_keys[sid]) < set(specscan.col_names):
+            # pdb.set_trace()
+            if not set(y) < set(specscan.col_names):
                 raise KeyError(
                     '{} are found in the config file under the "y:" section '
                     'but are not found in scan {}'
@@ -91,8 +100,14 @@ def run_programmatically(specfile, x, y, scans, monitor,
                       zip(y_keys, interpolator)}, index=axis)
                     for axis, interpolator in
                     zip( new_axis, interpolators)]
+    summed = [interp_df.dropna().sum(axis=1) for interp_df in interpolated]
 
-    return x_data, norm_data, y_data, normed, fits, zeroed, interpolated, scans
+    for sid, df in zip(scans, summed):
+        plt.plot(df, label=str(sid))
+    plt.legend(loc=0)
+    plt.show()
+    return (x_data, norm_data, y_data, normed, fits, zeroed, interpolated,
+            summed, scans)
     # fit it
 
     # plot it
@@ -110,9 +125,28 @@ def main():
         action='store',
         default='align.conf'
     )
+    p.add_argument(
+        '-s', '--scans',
+        action='store',
+        nargs='*'
+    )
+    p.add_argument(
+        '-x',
+        action='store',
+        nargs='?',
+    )
+    p.add_argument(
+        '-y',
+        action='store',
+        nargs='*'
+    )
 
     args = p.parse_args()
-    run(args.config, args.specfile)
+    # turn the scans into integers
+    args.scans = [int(s) for s in args.scans]
+    print('Arguments from command line init')
+    print(args)
+    run(args.specfile, args.config, args.scans, args.x, args.y)
 
 
 if __name__ == "__main__":
