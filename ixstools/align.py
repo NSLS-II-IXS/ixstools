@@ -27,7 +27,7 @@ def run(specfile, configfile, scans=None, x=None, y=None):
     return run_programmatically(specfile, **config)
 
 
-def run_programmatically(specfile, x, y, scans, monitor,
+def run_programmatically(specfile, x, y, scans, monitors,
                          interpolation_mode='linear',
                          densify_interpolated_axis=1,
                          output_dir='align_output',
@@ -41,11 +41,13 @@ def run_programmatically(specfile, x, y, scans, monitor,
     y_keys = {}
     for sid in scans:
         specscan = sf[sid]
-        if monitor not in specscan.col_names:
+        if not set(monitors) < set(specscan.col_names):
             raise KeyError(
-                '{} is the specified monitor and is not found in scan {}. '
-                'Column names in this scan are {}'.format(
-                    monitor, sid, specscan.col_names))
+                '{} are the specified monitors and are not a complete subset '
+                'of the available columns in scan {}. '
+                'Column names in this scan are {} and {} are not in this scan'
+                ''.format(monitors, sid, specscan.col_names,
+                          set(monitors).intersection(specscan.col_names)))
         if x not in specscan.col_names:
             raise KeyError(
                 '{} is the specified x axis and is not found in scan {}. '
@@ -76,17 +78,19 @@ def run_programmatically(specfile, x, y, scans, monitor,
 
     # looks like we made it through the gauntlet!
     x_data = [sf[sid].scan_data[x] for sid in scans]
-    monitor_data = [sf[sid].scan_data[monitor] for sid in scans]
     y_data = [sf[sid].scan_data[y_keys] for sid in scans]
     # output the raw data
-    for x_vals, monitor_sid, y_sid, sid in zip(x_data, monitor_data, y_data, scans):
+    for x_vals, y_sid, sid in zip(x_data, y_data, scans):
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'raw']))
         df = y_sid.copy()
-        df[monitor] = pd.Series(monitor_sid, index=x_vals)
         df.to_csv(fpath, output_sep)
 
+    monitor_data = [{monitor: np.average(sf[sid].scan_data[monitor])
+                     for monitor in monitors}
+                    for sid in scans]
     # normalize by the monitor
-    normed = [y.divide(norm, 'rows') for y, norm in zip(y_data, monitor_data)]
+    normed = [y.divide(np.product(list(monitor.values())), 'rows')
+              for y, monitor in zip(y_data, monitor_data)]
     # output the normalized data
     for x_vals, norm_vals, sid in zip(x_data, normed, scans):
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'norm']))
@@ -151,9 +155,6 @@ def run_programmatically(specfile, x, y, scans, monitor,
     plt.show()
     return (x_data, monitor_data, y_data, normed, fits, zeroed, interpolated,
             summed, scans)
-    # fit it
-
-    # plot it
 
 
 def main():
