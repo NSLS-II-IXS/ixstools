@@ -107,13 +107,15 @@ def run_programmatically(specfile, x, y, scans, monitors,
         ax.set_ylabel("Raw counts")
         plt.savefig(fpath + '.png')
         plt.close(fig)
-
-    monitor_data = [{monitor: np.average(sf[sid].scan_data[monitor])
-                     for monitor in monitors}
+    # normalize the monitor by its average value
+    monitor_data = [np.product([sf[sid].scan_data[monitor] /
+                                np.average(sf[sid].scan_data[monitor])
+                                for monitor in monitors], axis=0)
                     for sid in scans]
     # normalize by the monitor
-    normed = [y.divide(np.product(list(monitor.values())), 'rows')
-              for y, monitor in zip(y_data, monitor_data)]
+    normed = [y.divide(monitor*ct_time, 'rows')
+              for y, monitor, ct_time in zip(y_data, monitor_data, exposure_time)]
+
     # output the normalized data
     for x_vals, norm_vals, sid in zip(x_data, normed, scans):
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'norm']))
@@ -195,9 +197,10 @@ def run_programmatically(specfile, x, y, scans, monitors,
     #                           for sid in summed_by_detector]
     # output the summed data
     # pdb.set_trace()
-    fpath = os.path.join(output_dir, '-'.join([str(sid), 'summed']))
+    fpath = os.path.join(output_dir, '-'.join([str(sid) for sid in scans] + ['summed']))
     summed_by_scan.to_csv(fpath + '-by-scan', output_sep)
     summed_by_detector.to_csv(fpath + '-by-detector', output_sep)
+    summed_by_scan.dropna().sum(axis=1).to_csv(fpath + '-all', output_sep)
 
     # write metadata to file
     fname = '-'.join([str(sid) for sid in scans]) + 'metadata'
@@ -220,7 +223,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
         for col_name, c in zip(df, ['b', 'g', 'k', 'y', 'o', 'r']):
             getattr(ax, plotfunc)(df[col_name], label=str(col_name),
                                   marker='o', markerfacecolor=c, linestyle='None')
-            getattr(ax, plotfunc)(df_fit[col_name], label=str(col_name)+'fit',
+            getattr(ax, plotfunc)(df_fit[col_name], label=str(col_name)+'-fit',
                                   marker='', linestyle='-', linewidth=1,
                                   color=c)
             fwhm = fits[col_name].params['fwhm']
