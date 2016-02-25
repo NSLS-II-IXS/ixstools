@@ -215,6 +215,8 @@ def run_programmatically(specfile, x, y, scans, monitors,
         plotfunc = 'semilogy'
     else:
         plotfunc = 'plot'
+    maxval = 0
+    minval = 1
     for ax, df, df_fit, title, in zip(
             axes,
             [summed_by_scan, summed_by_detector],
@@ -223,6 +225,11 @@ def run_programmatically(specfile, x, y, scans, monitors,
         for col_name, c in zip(df, ['b', 'g', 'k', 'y', 'o', 'r']):
             getattr(ax, plotfunc)(df[col_name], label=str(col_name),
                                   marker='o', markerfacecolor=c, linestyle='None')
+            #pdb.set_trace()
+            curmax = np.max(df[col_name])
+            maxval = curmax if curmax > maxval else maxval
+            curmin = df[col_name].dropna()[df[col_name] != 0].min()
+            minval = curmin if curmin < minval else minval
             getattr(ax, plotfunc)(df_fit[col_name], label=str(col_name)+'-fit',
                                   marker='', linestyle='-', linewidth=1,
                                   color=c)
@@ -231,6 +238,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
         ax.legend(loc=1)
         ax.set_title(title)
         ax.set_xlabel(r'$\Delta$E')
+        ax.set_ylim([minval, maxval])
         ax.set_ylabel("Normalized counts per second")
         ax.axvline(linewidth=3, color='k', linestyle='--')
     fname = '-'.join([str(s) for s in scans] + ['final']) + '.png'

@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from lmfit.models import LorentzianModel, LinearModel
+from lmfit.models import LorentzianModel, LinearModel, GaussianModel
 
 def fit(x, y, bounds=None):
     """Fit a lorentzian + linear background to `field` in `scan`
@@ -21,7 +21,7 @@ def fit(x, y, bounds=None):
     >>> fit = fit_lorentzian(scan.scan_data)
     >>> fit.plot()
     """
-    lorentzian = LorentzianModel()
+    lorentzian = GaussianModel()
     linear = LinearModel()
     center = x[np.argmax(y)]
     if bounds is None:
@@ -39,5 +39,5 @@ def fit(x, y, bounds=None):
     lorentzian_params = lorentzian.guess(y, x=x, center=center)
     linear_params = linear.guess(y, x=x)
     lorentzian_params.update(linear_params)
-    model = lorentzian + linear
+    model = lorentzian# + linear
     return model.fit(y, x=x, params=lorentzian_params)
