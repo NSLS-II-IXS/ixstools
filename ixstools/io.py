@@ -1,6 +1,21 @@
 import numpy as np
 import pandas as pd
 import os
+from datetime import datetime
+
+
+def parse_specdate(specdate):
+    # example spec date: 'Fri Feb 19 14:01:35 2016'
+    return datetime.strptime(specdate.strip(), '%a %b %d %H:%M:%S %Y')
+
+def noop(arg):
+    return arg
+
+spec_line_mapper = {
+    '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
+    '#D': ('time_from_date', parse_specdate),
+}
+
 
 class Specfile:
     def __init__(self, filename):
@@ -9,6 +24,14 @@ class Specfile:
             scan_data = f.read().split('#S')
         scan_data = [section.split('\n') for section in scan_data]
         self.header = scan_data.pop(0)
+        # parse header
+        for line in self.header:
+            if not line.startswith('#'):
+                continue
+            line_type, line_contents = line.split(' ', 1)
+            attr, func = spec_line_mapper.get(line_type, (line_type[1:], noop))
+            setattr(self, attr, func(line_contents))
+            print(line)
         self.scans = {}
         for scan in scan_data:
             sid = int(scan[0].split()[0])
