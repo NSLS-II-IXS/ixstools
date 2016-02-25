@@ -1,9 +1,9 @@
 import os
 import numpy as np
-from lmfit.models import LorentzianModel, LinearModel, GaussianModel
+from lmfit.models import GaussianModel
 
 def fit(x, y, bounds=None):
-    """Fit a lorentzian + linear background to `field` in `scan`
+    """Fit a gaussian background to `field` in `scan`
 
     Parameters
     ----------
@@ -14,15 +14,14 @@ def fit(x, y, bounds=None):
     Returns
     -------
     fit : lmfit.model.ModelFit
-        The results of fitting the data to a linear + lorentzian peak
+        The results of fitting the data to a gaussian peak
 
     Examples
     --------
-    >>> fit = fit_lorentzian(scan.scan_data)
+    >>> fit = fit_gaussian(scan.scan_data)
     >>> fit.plot()
     """
-    lorentzian = GaussianModel()
-    linear = LinearModel()
+    gaussian = GaussianModel()
     center = x[np.argmax(y)]
     if bounds is None:
         lower, upper = 0, len(x)
@@ -36,8 +35,8 @@ def fit(x, y, bounds=None):
     bounds = slice(lower, upper)
     y = y[bounds]
     x = x[bounds]
-    lorentzian_params = lorentzian.guess(y, x=x, center=center)
+    gaussian_params = gaussian.guess(y, x=x, center=center)
     linear_params = linear.guess(y, x=x)
-    lorentzian_params.update(linear_params)
-    model = lorentzian# + linear
-    return model.fit(y, x=x, params=lorentzian_params)
+    gaussian_params.update(linear_params)
+    model = gaussian# + linear
+    return model.fit(y, x=x, params=gaussian_params)
