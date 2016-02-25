@@ -36,7 +36,5 @@ def fit(x, y, bounds=None):
     y = y[bounds]
     x = x[bounds]
     gaussian_params = gaussian.guess(y, x=x, center=center)
-    linear_params = linear.guess(y, x=x)
-    gaussian_params.update(linear_params)
-    model = gaussian# + linear
+    model = gaussian
     return model.fit(y, x=x, params=gaussian_params)

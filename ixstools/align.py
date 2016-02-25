@@ -42,7 +42,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
                          interpolation_mode='linear',
                          densify_interpolated_axis=1,
                          output_dir='align_output',
-                         output_sep=' ',
+                         output_sep=',',
                          logy=True):
     # switch matplotlib to agg backend for making figures and saving to disk
     matplotlib.use('Agg')
