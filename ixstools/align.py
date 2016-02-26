@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 
 from .io import Specfile
-from .fit import fit
+from .fit import gaussian_fit
 from argparse import ArgumentParser
 import fnmatch
 import os
@@ -121,7 +121,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'norm']))
         norm_vals.to_csv(fpath, output_sep)
     # fit all the data
-    fits = [[fit(x, cols[col_name]) for col_name in cols]
+    fits = [[gaussian_fit(x, cols[col_name]) for col_name in cols]
             for x, cols in zip(x_data, normed)]
     metadata['fits'] = {}
     # output the fit data
@@ -184,7 +184,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     fits = {}
     for sid in summed_by_scan:
         series = summed_by_scan[sid].dropna()
-        f = fit(series.index.values, series.values)
+        f = gaussian_fit(series.index.values, series.values)
         fits[sid] = f
         summed_by_scan_fit[sid] = pd.DataFrame({sid: f.best_fit}, index=series.index.values)
         # pdb.set_trace()
