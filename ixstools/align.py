@@ -14,10 +14,11 @@ from scipy.interpolate import interp1d
 import pdb
 import tempfile
 from pprint import pformat
+from .conf import conf
 
-def run(specfile, configfile, scans=None, x=None, y=None, logy=None):
-    with open(os.path.abspath(configfile), 'r') as f:
-        config = yaml.load(f.read())
+
+def run(specfile, scans=None, x=None, y=None, logy=None):
+    config = conf.copy()
     if scans:
         config['scans'] = [int(s) for s in scans]
     if x:
@@ -256,11 +257,6 @@ def main():
         help='Path to the specfile you wish to parse'
     )
     p.add_argument(
-        '-c', '--config',
-        action='store',
-        default='align.conf'
-    )
-    p.add_argument(
         '-s', '--scans',
         action='store',
         nargs='*'
@@ -281,7 +277,7 @@ def main():
     args.scans = [int(s) for s in args.scans]
     print('Arguments from command line init')
     print(args)
-    run(args.specfile, args.config, args.scans, args.x, args.y)
+    run(args.specfile, args.scans, args.x, args.y)
 
 if __name__ == "__main__":
     run('../data/20160219', '../data/align.conf')

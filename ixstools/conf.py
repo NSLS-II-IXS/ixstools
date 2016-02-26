@@ -1,12 +1,12 @@
 conf  = {
     # name of the x axis
-    x = 'HRM_En',
+    'x': 'HRM_En',
     # the name of the detector(s). Respects standard file globbing
-    y = 'TD*',
+    'y': 'TD*',
     # the name of the monitor column
-    monitors = ['SRcur', 'PD11'],
+    'monitors': ['SRcur', 'PD11'],
     # the scans that you wish to process
-    scans = [20, 22],
+    'scans': [20, 22],
     # interpolation mode options are
     # 'linear'
     # 'nearest'
@@ -16,17 +16,17 @@ conf  = {
     # 'cubic'
     # where 'slinear', 'quadratic' and 'cubic' refer to a spline interpolation
     # of first, second or third order)
-    interpolation_mode = 'linear',
+    'interpolation_mode': 'linear',
     # The multiplicative factor to increase (>1) or decrease (<1) the interpolated
     # axis
-    densify_interpolated_axis = 1,
+    'densify_interpolated_axis': 1,
     # Folder to write the data (respects relative and absolute paths).
     # Defaults to 'align_output' folder in current directory
-    output = 'align_output/',
+    'output_dir': 'align_output/',
     # The separator in the output files.
-    # Defaults to space = ' '
-    output_sep = ',',
+    # Defaults to space: ' '
+    'output_sep': ',',
     # Plot *all* plots with a log scale on the y axis.
     # Defaults to True
-    logy = True,
+    'logy': True,
 }
