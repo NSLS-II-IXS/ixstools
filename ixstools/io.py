@@ -2,18 +2,22 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 
 def parse_specdate(specdate):
     # example spec date: 'Fri Feb 19 14:01:35 2016'
-    return datetime.strptime(specdate.strip(), '%a %b %d %H:%M:%S %Y')
+    return datetime.strptime(specdate, '%a %b %d %H:%M:%S %Y')
+
 
 def noop(arg):
     return arg
 
+
 spec_line_mapper = {
     '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
     '#D': ('time_from_date', parse_specdate),
+    # '#C': ('mode')
 }
 
 
@@ -72,26 +76,48 @@ class Specscan:
     def __len__(self):
         return len(self.scan_data)
 
-    def plot(self, column_names=None, x=None):
+    def plot(self, ax, column_names=None, x=None):
+        """Plot the values contained in the spec versus some x.
+
+        Parameters
+        ----------
+        ax : axes or array of axes
+            One axes object or a list of axes objects of the same length as
+            the number of column_names.
+            If one axes object is passed, all lines will be plotted on the
+            same axes object, otherwise each data channel will be plotted on
+            its own axes object
+        column_names : list, optional
+            The list of column names to plot.
+            Defaults to all column names
+        x : string, optional
+            The x axis to plot `column_names` against.
+            Defaults to the first column in the spec file
+
+        Returns
+        -------
+        arts : dict
+            The line artists from the call to `ax.plot()`
+        """
+        try:
+            len(ax)
+        except TypeError:
+            iterable = ((col_name, ax) for col_name in column_names)
+        else:
+            if len(ax.ravel() != len(column_names)):
+                raise ValueError("Please give me the same number of axes (%s) "
+                                 "as column_names (%s)" % (len(ax.ravel(),
+                                                           len(column_names))))
+            iterable = zip(col_name, ax)
         if x is None:
             x = self.scan_data.columns[0]
         if column_names is None:
             column_names = self.scan_data.columns
-        ncols = 2
-        nrows = int(np.ceil(len(column_names)/ncols))
-        try:
-            self.ncols
-            self.nrows
-        except AttributeError:
-            self.ncols = 0
-            self.nrows = 0
-        if self.ncols != ncols or self.nrows != nrows:
-            self.ncols, self.nrows = ncols, nrows
-            self.fig, self.axes = plt.subplots(nrows=nrows,
-                                               ncols=ncols,
-                                               figsize=(5*ncols, 2*nrows))
-        self.arts = {}
-        for data, ax in zip(column_names, self.axes.ravel()):
+            column_names.remove(x)
+
+        arts = {}
+        for y, ax in iterable:
             ax.cla()
-            self.arts[data] = ax.plot(self.scan_data[x], self.scan_data[data], label=data)
+            arts[data] = ax.plot(self.scan_data[x], self.scan_data[y], label=y)
             ax.legend(loc=0)
+        return arts
