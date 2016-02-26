@@ -1,5 +1,7 @@
 import ixstools
 from ixstools.io import Specfile
+import random
+random.seed('test_io.py')
 import pytest
 
 
@@ -15,6 +17,9 @@ def test_specfile(datapath):
     matplotlib.use('agg')
     fig, ax = plt.subplots()
     for scan in sf:
-        col_name = scan.col_names[1]
+        # select a random column from within the spec file, but
+        # because the seed is set, it will be the *same* random column
+        # each time...
+        col_name = random.choice(scan.col_names)
         arts = scan.plot(ax, column_names=[col_name])
         assert len(arts[col_name].get_xdata()) > 0
