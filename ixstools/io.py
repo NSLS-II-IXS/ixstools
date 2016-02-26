@@ -99,6 +99,11 @@ class Specscan:
         arts : dict
             The line artists from the call to `ax.plot()`
         """
+        if x is None:
+            x = self.scan_data.columns[0]
+        if column_names is None:
+            column_names = list(self.scan_data.columns)
+            column_names.remove(x)
         try:
             len(ax)
         except TypeError:
@@ -109,15 +114,11 @@ class Specscan:
                                  "as column_names (%s)" % (len(ax.ravel(),
                                                            len(column_names))))
             iterable = zip(col_name, ax)
-        if x is None:
-            x = self.scan_data.columns[0]
-        if column_names is None:
-            column_names = self.scan_data.columns
-            column_names.remove(x)
 
         arts = {}
         for y, ax in iterable:
             ax.cla()
-            arts[data] = ax.plot(self.scan_data[x], self.scan_data[y], label=y)
+            art, = ax.plot(self.scan_data[x], self.scan_data[y], label=y)
+            arts[y] = art
             ax.legend(loc=0)
         return arts
