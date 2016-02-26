@@ -20,8 +20,21 @@ spec_line_mapper = {
 }
 
 
-
 def parse_spec_header(spec_header):
+    """Parse the spec header!
+
+    Parameters
+    ----------
+    spec_header : list
+        List of the lines in the spec file header. This is the block of text
+        in the spec file before the first scan. Note that the first scan
+        starts with a line that begins with "#S"
+
+    Returns
+    -------
+    parsed_header : dict
+        The spec header parsed into a dictionary with much more useful names
+    """
     header_gen = (line for line in spec_header)
     parsed_header = {
         "motor_human_names": [],
@@ -31,9 +44,9 @@ def parse_spec_header(spec_header):
     }
     spec_obj_map = {
         '#O': ('  ', parsed_header['motor_human_names']),
-        '#o': (' ', parsed_header['motor_spec_names']),
+        '#o': (' ',  parsed_header['motor_spec_names']),
         '#J': ('  ', parsed_header['detector_human_names']),
-        '#j': (' ', parsed_header['detector_spec_names'])
+        '#j': (' ',  parsed_header['detector_spec_names'])
     }
     for line in header_gen:
         if not line.startswith('#'):
@@ -42,6 +55,9 @@ def parse_spec_header(spec_header):
         if line_type[:2] in spec_obj_map:
             sep, lst = spec_obj_map[line_type[:2]]
             lst.extend(line_contents.strip().split(sep))
+        elif line_type == '#C':
+            spec_mode, user = line_contents.split('  ')
+            parsed_header.update({'spec_mode': spec_mode, 'user': user})
         elif line_type in spec_line_mapper:
             attr, func = spec_line_mapper[line_type]
             parsed_header[attr] = func(line_contents)
