@@ -11,8 +11,15 @@ def specfile_object():
 
 
 def test_specfile_header_parsing(specfile_object):
-    assert (specfile_object.parsed_header['time_from_date'] ==
-            specfile_object.parsed_header['time_from_timestamp'])
+    sf = specfile_object
+    assert (sf.parsed_header['time_from_date'] ==
+            sf.parsed_header['time_from_timestamp'])
+
+    assert (len(sf.parsed_header['motor_spec_names']) ==
+            len(sf.parsed_header['motor_human_names']))
+
+    assert (len(sf.parsed_header['detector_spec_names']) ==
+            len(sf.parsed_header['detector_human_names']))
 
 
 def test_specfile_plotting(specfile_object):
