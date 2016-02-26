@@ -5,18 +5,11 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-def parse_specdate(specdate):
-    # example spec date: 'Fri Feb 19 14:01:35 2016'
-    return datetime.strptime(specdate, '%a %b %d %H:%M:%S %Y')
-
-
-def noop(arg):
-    return arg
-
-
-spec_line_mapper = {
+spec_line_parser = {
     '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
-    '#D': ('time_from_date', parse_specdate),
+    '#D': ('time_from_date',
+           lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y')),
+    '#F': ('date', lambda x: datetime.strptime(x, '%Y%m%d')),
 }
 
 
@@ -35,32 +28,51 @@ def parse_spec_header(spec_header):
     parsed_header : dict
         The spec header parsed into a dictionary with much more useful names
     """
-    header_gen = (line for line in spec_header)
+    # initialize the header dictionary that contains a mapping of more useful
+    # names than #O, #o, etc..., along with python objects for each type of
+    # metadata
     parsed_header = {
         "motor_human_names": [],
         "motor_spec_names": [],
         "detector_human_names": [],
         "detector_spec_names": [],
     }
+    # map the motor/det lines to the dictionary of more friendly names
     spec_obj_map = {
         '#O': ('  ', parsed_header['motor_human_names']),
         '#o': (' ',  parsed_header['motor_spec_names']),
         '#J': ('  ', parsed_header['detector_human_names']),
         '#j': (' ',  parsed_header['detector_spec_names'])
     }
-    for line in header_gen:
+    for line in spec_header:
         if not line.startswith('#'):
+            # this is not a line that contains information that I care about
             continue
+        # split the line into the "line_type" which tells us the type of
+        # information that this line contains and the "line_contents" which
+        # tells us
         line_type, line_contents = line.split(' ', 1)
         if line_type[:2] in spec_obj_map:
+            # these are lines whose semantic information spreads across
+            # multiple lines
             sep, lst = spec_obj_map[line_type[:2]]
             lst.extend(line_contents.strip().split(sep))
         elif line_type == '#C':
+            # this line looks like this: '#C fourc  User = asuvorov'
+            # and it contains two pieces of information. Have to special case
+            # it
             spec_mode, user = line_contents.split('  ')
-            parsed_header.update({'spec_mode': spec_mode, 'user': user})
-        elif line_type in spec_line_mapper:
-            attr, func = spec_line_mapper[line_type]
+            parsed_header['spec_mode'] = spec_mode
+            parsed_header['user'] = user.split()[-1]
+        elif line_type in spec_line_parser:
+            # These lines are self contained and map to one piece of
+            # information
+            attr, func = spec_line_parser[line_type]
             parsed_header[attr] = func(line_contents)
+        else:
+            # I have no idea what to do with this line...
+            print("I am not sure how to parse %s" % line_type)
+            parsed_header[line_type] = line_contents
 
     return parsed_header
 
