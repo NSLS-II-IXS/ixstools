@@ -17,9 +17,36 @@ def noop(arg):
 spec_line_mapper = {
     '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
     '#D': ('time_from_date', parse_specdate),
-    # '#C': ('mode')
 }
 
+
+
+def parse_spec_header(spec_header):
+    header_gen = (line for line in spec_header)
+    parsed_header = {
+        "motor_human_names": [],
+        "motor_spec_names": [],
+        "detector_human_names": [],
+        "detector_spec_names": [],
+    }
+    spec_obj_map = {
+        '#O': ('  ', parsed_header['motor_human_names']),
+        '#o': (' ', parsed_header['motor_spec_names']),
+        '#J': ('  ', parsed_header['detector_human_names']),
+        '#j': (' ', parsed_header['detector_spec_names'])
+    }
+    for line in header_gen:
+        if not line.startswith('#'):
+            continue
+        line_type, line_contents = line.split(' ', 1)
+        if line_type[:2] in spec_obj_map:
+            sep, lst = spec_obj_map[line_type[:2]]
+            lst.extend(line_contents.strip().split(sep))
+        elif line_type in spec_line_mapper:
+            attr, func = spec_line_mapper[line_type]
+            parsed_header[attr] = func(line_contents)
+
+    return parsed_header
 
 class Specfile:
     def __init__(self, filename):
@@ -29,13 +56,7 @@ class Specfile:
         scan_data = [section.split('\n') for section in scan_data]
         self.header = scan_data.pop(0)
         # parse header
-        for line in self.header:
-            if not line.startswith('#'):
-                continue
-            line_type, line_contents = line.split(' ', 1)
-            attr, func = spec_line_mapper.get(line_type, (line_type[1:], noop))
-            setattr(self, attr, func(line_contents))
-            print(line)
+        self.parsed_header = parse_spec_header(self.header)
         self.scans = {}
         for scan in scan_data:
             sid = int(scan[0].split()[0])
