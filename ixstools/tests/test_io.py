@@ -12,10 +12,10 @@ def specfile_object():
 
 def test_specfile_header_parsing(specfile_object):
     sf = specfile_object
-    # Can't seem to get the time_from_date and time_from_timestamp
+    # Can't seem to get the `time_from_date` and `time`
     # to be equal on travis
     # assert (sf.parsed_header['time_from_date'] ==
-    #         sf.parsed_header['time_from_timestamp'])
+    #         sf.parsed_header['time'])
 
     assert (len(sf.parsed_header['motor_spec_names']) ==
             len(sf.parsed_header['motor_human_names']))

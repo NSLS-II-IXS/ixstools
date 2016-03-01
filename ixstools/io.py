@@ -15,7 +15,7 @@ from datetime import datetime
 spec_line_parser = {
     '#D': ('time_from_date',
            lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y')),
-    '#E': ('time_from_timestamp',
+    '#E': ('time',
            lambda x: datetime.fromtimestamp(int(x))),
     '#F': ('date',
            lambda x: datetime.strptime(x, '%Y%m%d')),
