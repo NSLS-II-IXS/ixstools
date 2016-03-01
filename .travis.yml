@@ -17,7 +17,7 @@ install:
   - conda config --set always_yes true
   - conda update conda
   - conda config --add channels lightsource2
-  - conda create -n testenv pip pytest coverage python=$TRAVIS_PYTHON_VERSION numpy flake8 lmfit
+  - conda create -n testenv pip pytest coverage python=$TRAVIS_PYTHON_VERSION numpy flake8 lmfit pyyaml conda-build
   - source activate testenv
   - python setup.py install
   - pip install codecov
@@ -27,6 +27,7 @@ script:
   - coverage report -m
   # add 'exit-zero' so that the my bad code standards dont fail travis
   - flake8 $TRAVIS_BUILD_DIR/ixstools --exit-zero
+  - conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION
 
 after_success:
   - codecov
