@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/NSLS-II-IXS/ixstools.svg?branch=master)](https://travis-ci.org/NSLS-II-IXS/ixstools)
+[![codecov.io](https://codecov.io/github/NSLS-II-IXS/ixstools/coverage.svg?branch=master)](https://codecov.io/github/NSLS-II-IXS/ixstools?branch=master)
 
 ixstools
 --------
