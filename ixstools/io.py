@@ -1,15 +1,30 @@
+"""
+`Reference <https://github.com/certified-spec/specPy/blob/master/doc/specformat.rst>`_
+for the spec file format.
+"""
 import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
 import matplotlib.pyplot as plt
 
-
+# Dictionary that maps a spec metadata line to a specific lambda function
+# to parse it. This only works for lines whose contents can be mapped to a
+# single semantic meaning.  e.g., the "spec command" line
+# (ascan start stop step exposure_time) does not map well on to this "single
+# semantic meaning" splitter
 spec_line_parser = {
-    '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
     '#D': ('time_from_date',
            lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y')),
+    '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
     '#F': ('date', lambda x: datetime.strptime(x, '%Y%m%d')),
+    # The exposure time
+    # It is critical that this line be split on *two* spaces
+    '#L': ('col_names', lambda x: x.split('  ')),
+    '#N': ('num_points', float),
+    # The h, k, l coordinates
+    '#Q': ('hkl', lambda x: [float(s) for s in x.split(' ')]),
+    '#T': ('exposure_time', lambda x: float(x.split('  ')[0])),
 }
 
 
@@ -76,6 +91,59 @@ def parse_spec_header(spec_header):
 
     return parsed_header
 
+
+def parse_spec_scan(raw_scan_data):
+    """Parse the spec scan!
+
+    Parameters
+    ----------
+    raw_scan_data : iterable
+        Iterable of the lines in the spec scan. Should include the scan header
+        and the scan data
+
+    Returns
+    -------
+    md : dict
+        The contents of the scan header parsed into a dictionary of python
+        objects
+    scan_data : pandas.DataFrame
+        The scan data in a pandas data frame.  Column names come from the #L
+        line
+    """
+    md = {}
+    S_row = raw_scan_data.pop(0).split()
+    md['scan_id'] = int(S_row.pop(0))
+    md['scan_command'] = S_row.pop(0)
+    md['scan_args'] = S_row
+    md['motor_values'] = []
+    md['geometry'] = []
+    line_hash_mapping = {
+        '#G': 'geometry',
+        '#P': 'motor_values',
+    }
+    for line in raw_scan_data:
+        if line.startswith('#'):
+            # split the line into the "line_type" which tells us the type of
+            # information that this line contains and the "line_contents" which
+            # tells us
+            line_type, line_contents = line.split(' ', 1)
+            if line_type in spec_line_parser:
+                attr, func = spec_line_parser[line_type]
+                md[attr] = func(line_contents)
+            elif line_type[:2] in line_hash_mapping:
+                # These lines are numbered like #G0, #G1, #G2, etc..
+                # We need to just grab the #G part, so take only the first two
+                # elements with line_type[:2]
+                vals = [float(v) for v in line_contents.split()]
+                md[line_hash_mapping[line_type[:2]]].extend(vals)
+    # iterate through the lines again and capture just the scan data
+    scan_data = [line.split() for line in raw_scan_data
+                 if not line.startswith('#') if line]
+    scan_data = pd.DataFrame(
+        data=scan_data, columns=md['col_names'], dtype=float)
+    return md, scan_data
+
+
 class Specfile:
     def __init__(self, filename):
         self.filename = os.path.abspath(filename)
@@ -104,17 +172,9 @@ class Specscan:
     def __init__(self, specfile, raw_scan_data):
         self.specfile = specfile
         self.raw_scan_data = raw_scan_data
-        header_row = self.raw_scan_data.pop(0).split()
-        self.scan_id = int(header_row.pop(0))
-        self.scan_command = header_row.pop(0)
-        self.scan_args = header_row
-        for row in self.raw_scan_data:
-            if row.startswith('#L'):
-                self.col_names = row.split()[1:]
-        scan_data = [row.split() for row in self.raw_scan_data
-                     if not row.startswith('#') if row]
-        self.scan_data = pd.DataFrame(
-            data=scan_data, columns=self.col_names, dtype=float)
+        self.md, self.scan_data = parse_spec_scan(self.raw_scan_data)
+        for k, v in self.md.items():
+            setattr(self, k, v)
 
     def __repr__(self):
         return 'Specfile("%s")[%s]' % (self.specfile.filename, self.scan_id)
