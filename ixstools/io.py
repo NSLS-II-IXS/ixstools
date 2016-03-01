@@ -20,7 +20,7 @@ spec_line_parser = {
            lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y').replace(
                tzinfo=pytz.timezone(TIMEZONE))),
     '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(
-        int(x)).replace(tzinfo=pytz.timezone(TIMEZONE))),
+        int(x), pytz.timezone(TIMEZONE))),
     '#F': ('date', lambda x: datetime.strptime(x, '%Y%m%d')),
     # The exposure time
     # It is critical that this line be split on *two* spaces
