@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
-import matplotlib.pyplot as plt
+import pytz
+
+TIMEZONE = 'US/Eastern'
 
 # Dictionary that maps a spec metadata line to a specific lambda function
 # to parse it. This only works for lines whose contents can be mapped to a
@@ -15,8 +17,10 @@ import matplotlib.pyplot as plt
 # semantic meaning" splitter
 spec_line_parser = {
     '#D': ('time_from_date',
-           lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y')),
-    '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(int(x))),
+           lambda x: datetime.strptime(x, '%a %b %d %H:%M:%S %Y').replace(
+               tzinfo=pytz.timezone(TIMEZONE))),
+    '#E': ('time_from_timestamp', lambda x: datetime.fromtimestamp(
+        int(x)).replace(tzinfo=pytz.timezone(TIMEZONE))),
     '#F': ('date', lambda x: datetime.strptime(x, '%Y%m%d')),
     # The exposure time
     # It is critical that this line be split on *two* spaces
