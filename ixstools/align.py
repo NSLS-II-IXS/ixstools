@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 
 from .io import Specfile
-from .fit import fit
+from .fit import gaussian_fit
 from argparse import ArgumentParser
 import fnmatch
 import os
@@ -14,10 +14,11 @@ from scipy.interpolate import interp1d
 import pdb
 import tempfile
 from pprint import pformat
+from .conf import conf
 
-def run(specfile, configfile, scans=None, x=None, y=None, logy=None):
-    with open(os.path.abspath(configfile), 'r') as f:
-        config = yaml.load(f.read())
+
+def run(specfile, scans=None, x=None, y=None, logy=None):
+    config = conf.copy()
     if scans:
         config['scans'] = [int(s) for s in scans]
     if x:
@@ -121,7 +122,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
         fpath = os.path.join(output_dir, '-'.join([str(sid), 'norm']))
         norm_vals.to_csv(fpath, output_sep)
     # fit all the data
-    fits = [[fit(x, cols[col_name]) for col_name in cols]
+    fits = [[gaussian_fit(x, cols[col_name]) for col_name in cols]
             for x, cols in zip(x_data, normed)]
     metadata['fits'] = {}
     # output the fit data
@@ -184,7 +185,7 @@ def run_programmatically(specfile, x, y, scans, monitors,
     fits = {}
     for sid in summed_by_scan:
         series = summed_by_scan[sid].dropna()
-        f = fit(series.index.values, series.values)
+        f = gaussian_fit(series.index.values, series.values)
         fits[sid] = f
         summed_by_scan_fit[sid] = pd.DataFrame({sid: f.best_fit}, index=series.index.values)
         # pdb.set_trace()
@@ -256,11 +257,6 @@ def main():
         help='Path to the specfile you wish to parse'
     )
     p.add_argument(
-        '-c', '--config',
-        action='store',
-        default='align.conf'
-    )
-    p.add_argument(
         '-s', '--scans',
         action='store',
         nargs='*'
@@ -281,7 +277,7 @@ def main():
     args.scans = [int(s) for s in args.scans]
     print('Arguments from command line init')
     print(args)
-    run(args.specfile, args.config, args.scans, args.x, args.y)
+    run(args.specfile, args.scans, args.x, args.y)
 
 if __name__ == "__main__":
     run('../data/20160219', '../data/align.conf')

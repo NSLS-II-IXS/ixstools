@@ -2,14 +2,18 @@ import os
 import numpy as np
 from lmfit.models import GaussianModel
 
-def fit(x, y, bounds=None):
+
+def gaussian_fit(x, y, bounds=None):
     """Fit a gaussian background to `field` in `scan`
 
     Parameters
     ----------
     x : array
+        independent variable
     y : array
-    bounds : The +/- range to fit the data to
+        dependent variable
+    bounds : iterable
+        The +/- range to fit the data to
 
     Returns
     -------

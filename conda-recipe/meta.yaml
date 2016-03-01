@@ -24,12 +24,10 @@ requirements:
     - pyyaml
 
 test:
-  requires:
-    - nose
-    - coverage
   imports:
     - ixstools
     - ixstools.align
+    - ixstools.conf
     - ixstools.fit
     - ixstools.io
 
