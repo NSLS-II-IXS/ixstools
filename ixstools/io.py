@@ -20,8 +20,6 @@ spec_line_parser = {
     '#F': ('date',
            lambda x: datetime.strptime(x, '%Y%m%d')),
     # The exposure time
-    # It is critical that this line be split on *two* spaces
-    '#L': ('col_names', lambda x: x.split('  ')),
     '#N': ('num_points', float),
     # The h, k, l coordinates
     '#Q': ('hkl', lambda x: [float(s) for s in x.split(' ')]),
@@ -131,6 +129,11 @@ def parse_spec_scan(raw_scan_data):
             if line_type in spec_line_parser:
                 attr, func = spec_line_parser[line_type]
                 md[attr] = func(line_contents)
+            elif line_type == '#L':
+                # It is critical that this line be split on *two* spaces
+                col_names = line_contents.split('  ')
+                md['x_name'] = col_names[0]
+                md['col_names'] = col_names
             elif line_type[:2] in line_hash_mapping:
                 # These lines are numbered like #G0, #G1, #G2, etc..
                 # We need to just grab the #G part, so take only the first two
@@ -138,10 +141,12 @@ def parse_spec_scan(raw_scan_data):
                 vals = [float(v) for v in line_contents.split()]
                 md[line_hash_mapping[line_type[:2]]].extend(vals)
     # iterate through the lines again and capture just the scan data
-    scan_data = [line.split() for line in raw_scan_data
-                 if not line.startswith('#') if line]
+    scan_data = np.asarray([line.split() for line in raw_scan_data
+                           if not line.startswith('#') if line])
+    x = scan_data[:,0]
     scan_data = pd.DataFrame(
-        data=scan_data, columns=md['col_names'], dtype=float)
+        data=scan_data, columns=md['col_names'], index=x, dtype=float)
+    scan_data.index.name = md['x_name']
     return md, scan_data
 
 
