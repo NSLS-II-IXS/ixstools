@@ -143,7 +143,12 @@ def parse_spec_scan(raw_scan_data):
     # iterate through the lines again and capture just the scan data
     scan_data = np.asarray([line.split() for line in raw_scan_data
                            if not line.startswith('#') if line])
-    x = scan_data[:,0]
+    try:
+        x = scan_data[:,0]
+    except IndexError:
+        # there must be no scan data...
+        return md, None
+
     scan_data = pd.DataFrame(
         data=scan_data, columns=md['col_names'], index=x, dtype=float)
     scan_data.index.name = md['x_name']
