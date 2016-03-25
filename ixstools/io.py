@@ -179,6 +179,9 @@ class Specfile:
         return (self.scans[sid] for sid in sorted(self.scans.keys()))
 
     def __repr__(self):
+        return "Specfile('{}')".format(self.filename)
+
+    def __str__(self):
         return """
 {0}
 {1}
@@ -196,10 +199,20 @@ class Specscan:
             setattr(self, k, v)
 
     def __repr__(self):
-        return 'Specfile("%s")[%s]' % (self.specfile.filename, self.scan_id)
-
-    def __str__(self):
-        return str(self.scan_data)
+        return "{}[{}]".format(repr(self.specfile), self.scan_id)
 
     def __len__(self):
         return len(self.scan_data)
+
+    def __eq__(self, obj):
+        return obj.specfile == self.specfile and obj.scan_id == self.scan_id
+
+    def __eq__(self, obj):
+        return obj.specfile != self.specfile or obj.scan_id != self.scan_id
+
+    def __str__(self):
+        return """Scan {}
+{}
+{} points in the scan
+{} """.format(self.scan_id, self.scan_command + " " + " ".join(self.scan_args),
+              len(self), self.time_from_date)
