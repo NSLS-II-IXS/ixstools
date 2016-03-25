@@ -20,7 +20,7 @@ spec_line_parser = {
     '#F': ('date',
            lambda x: datetime.strptime(x, '%Y%m%d')),
     # The exposure time
-    '#N': ('num_points', float),
+    '#N': ('num_points', int),
     # The h, k, l coordinates
     '#Q': ('hkl', lambda x: [float(s) for s in x.split(' ')]),
     '#T': ('exposure_time', lambda x: float(x.split('  ')[0])),
@@ -173,7 +173,7 @@ class Specfile:
         return self.scans[key]
 
     def __len__(self):
-        return len(self.scans)-1
+        return len(self.scans)
 
     def __iter__(self):
         return (self.scans[sid] for sid in sorted(self.scans.keys()))
