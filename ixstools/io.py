@@ -178,6 +178,14 @@ class Specfile:
     def __iter__(self):
         return (self.scans[sid] for sid in sorted(self.scans.keys()))
 
+    def __repr__(self):
+        return """
+{0}
+{1}
+{2} scans
+user: {3}""".format(self.filename, self.parsed_header['time'], len(self),
+                    self.parsed_header['user'])
+
 
 class Specscan:
     def __init__(self, specfile, raw_scan_data):
