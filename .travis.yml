@@ -13,6 +13,8 @@ before_install:
 install:
   - conda create -n testenv pip pytest coverage python=$TRAVIS_PYTHON_VERSION numpy flake8 lmfit pyyaml pandas matplotlib scipy
   - source activate testenv
+  # this next line can be removed as soon as conda-forge fixes their pinnings. See https://github.com/conda-forge/staged-recipes/issues/907
+  - conda install icu
   - pip install codecov
   - python setup.py install
   - git clean -xfd
