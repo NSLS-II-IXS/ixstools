@@ -27,7 +27,6 @@ script:
   - coverage report -m
   # add 'exit-zero' so that the my bad code standards dont fail travis
   - flake8 $TRAVIS_BUILD_DIR/ixstools --exit-zero
-  - conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION
 
 after_success:
   - codecov
