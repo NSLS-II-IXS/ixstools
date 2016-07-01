@@ -10,6 +10,8 @@ they can be moved to more centralized projects on an as-needed basis.
 
 ## Conda Recipes
 
-[tag](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/ixstools)
+Install the most recent tagged build: `conda install filestore -c lightsource2-tag`
 
-[dev](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/ixstools)
+Install the most recent tagged build: `conda install filestore -c lightsource2-dev`
+
+Find the tagged recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-tag/filestore) and the dev recipe [here](https://github.com/NSLS-II/lightsource2-recipes/tree/master/recipes-dev/filestore)
