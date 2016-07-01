@@ -11,16 +11,16 @@ before_install:
   - . ~/scripts/install-miniconda.sh
 
 install:
-  - conda create -n testenv pip pytest coverage python=$TRAVIS_PYTHON_VERSION numpy flake8 lmfit pyyaml
+  - conda create -n testenv pip pytest coverage python=$TRAVIS_PYTHON_VERSION numpy flake8 lmfit pyyaml pandas matplotlib scipy
   - source activate testenv
-  - python setup.py install
   - pip install codecov
+  - python setup.py install
+  - git clean -xfd
+
 
 script:
   - coverage run run_tests.py
   - coverage report -m
-  # add 'exit-zero' so that the my bad code standards dont fail travis
-  - flake8 $TRAVIS_BUILD_DIR/ixstools --exit-zero
 
 after_success:
   - codecov
